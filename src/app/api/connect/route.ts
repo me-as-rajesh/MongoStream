@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { MongoClient, ObjectId, type MongoClientOptions, type Db } from 'mongodb';
+import { MongoClient, ObjectId, type Db } from 'mongodb';
 import { type MongoDatabase, type MongoCollection } from '@/lib/types';
+import { getMongoClient } from '@/lib/mongodb';
 
 function getSimpleSchema(doc: Record<string, any>): string {
     if (!doc) {
@@ -74,14 +75,8 @@ export async function POST(request: Request) {
     let client: MongoClient | null = null;
 
     try {
-        const clientOptions: MongoClientOptions = {};
-        // For non-SRV connection strings like localhost, directConnection is needed
-        if (connectionString.startsWith('mongodb://') && (connectionString.includes('localhost') || connectionString.includes('127.0.0.1'))) {
-             clientOptions.directConnection = true;
-        }
-
-        client = new MongoClient(connectionString, clientOptions);
- await client.connect();
+        client = getMongoClient(connectionString);
+        await client.connect();
 
         const databases: MongoDatabase[] = [];
 

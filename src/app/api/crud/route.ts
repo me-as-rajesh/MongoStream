@@ -1,6 +1,7 @@
 
 import { NextResponse } from 'next/server';
-import { MongoClient, ObjectId, type MongoClientOptions } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
+import { getMongoClient } from '@/lib/mongodb';
 
 export async function POST(request: Request) {
     const { connectionString, dbName, collectionName, operation, payload } = await request.json();
@@ -12,12 +13,7 @@ export async function POST(request: Request) {
     let client: MongoClient | null = null;
 
     try {
-        const clientOptions: MongoClientOptions = {};
-        if (connectionString.startsWith('mongodb://') && (connectionString.includes('localhost') || connectionString.includes('127.0.0.1'))) {
-             clientOptions.directConnection = true;
-        }
-
-        client = new MongoClient(connectionString, clientOptions);
+        client = getMongoClient(connectionString);
         await client.connect();
         const db = client.db(dbName);
         const collection = db.collection(collectionName);
