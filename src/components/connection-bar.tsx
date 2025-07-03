@@ -8,18 +8,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Label } from '@/components/ui/label';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { type MongoConnection } from '@/lib/types';
-import { Plug, Unplug, Plus, Trash2, Save, Loader2, Database } from 'lucide-react';
+import { Plug, Unplug, Plus, Trash2, Save, Loader2, Database, RefreshCw } from 'lucide-react';
 
 interface ConnectionBarProps {
   isConnected: boolean;
   isLoading: boolean;
-  onConnect: () => void;
+  onConnect: (connectionString: string) => void;
   onDisconnect: () => void;
+  onRefresh: () => void;
 }
 
-export function ConnectionBar({ isConnected, isLoading, onConnect, onDisconnect }: ConnectionBarProps) {
+export function ConnectionBar({ isConnected, isLoading, onConnect, onDisconnect, onRefresh }: ConnectionBarProps) {
   const [connections, setConnections] = useLocalStorage<MongoConnection[]>('mongo-connections', []);
-  const [connectionString, setConnectionString] = useState('');
+  const [connectionString, setConnectionString] = useState('mongodb://localhost:27017/gyrus');
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
   const [saveName, setSaveName] = useState('');
@@ -84,11 +85,11 @@ export function ConnectionBar({ isConnected, isLoading, onConnect, onDisconnect 
                 </Select>
                 <Input
                     type="text"
-                    placeholder="mongodb+srv://..."
+                    placeholder="mongodb://localhost:27017/gyrus"
                     value={connectionString}
                     onChange={(e) => setConnectionString(e.target.value)}
                     className="font-code"
-                    disabled={isLoading}
+                    disabled={isLoading || isConnected}
                 />
                 <Dialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen}>
                     <DialogTrigger asChild>
@@ -113,11 +114,16 @@ export function ConnectionBar({ isConnected, isLoading, onConnect, onDisconnect 
                 </Dialog>
 
                 {isConnected ? (
-                    <Button onClick={onDisconnect} variant="destructive" className="w-[120px]">
-                        <Unplug className="mr-2 h-4 w-4" /> Disconnect
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <Button onClick={onRefresh} variant="outline" size="icon" disabled={isLoading}>
+                        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                        </Button>
+                        <Button onClick={onDisconnect} variant="destructive" className="w-[120px]">
+                            <Unplug className="mr-2 h-4 w-4" /> Disconnect
+                        </Button>
+                    </div>
                 ) : (
-                    <Button onClick={onConnect} disabled={!connectionString || isLoading} className="w-[120px]">
+                    <Button onClick={() => onConnect(connectionString)} disabled={!connectionString || isLoading} className="w-[120px]">
                         {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plug className="mr-2 h-4 w-4" />}
                         Connect
                     </Button>
