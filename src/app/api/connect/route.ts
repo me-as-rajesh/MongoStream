@@ -81,7 +81,7 @@ export async function POST(request: Request) {
         }
 
         client = new MongoClient(connectionString, clientOptions);
-        await client.connect();
+ await client.connect();
 
         const databases: MongoDatabase[] = [];
 
