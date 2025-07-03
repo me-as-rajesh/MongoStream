@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { MongoClient, ObjectId } from 'mongodb';
+import { MongoClient, ObjectId, type MongoClientOptions } from 'mongodb';
 import { type MongoDatabase, type MongoCollection } from '@/lib/types';
 
 function getSimpleSchema(doc: Record<string, any>): string {
@@ -52,7 +52,13 @@ export async function POST(request: Request) {
     let client: MongoClient | null = null;
 
     try {
-        client = new MongoClient(connectionString);
+        const clientOptions: MongoClientOptions = {};
+        // For non-SRV connection strings like localhost, directConnection is needed
+        if (connectionString.startsWith('mongodb://') && (connectionString.includes('localhost') || connectionString.includes('127.0.0.1'))) {
+             clientOptions.directConnection = true;
+        }
+
+        client = new MongoClient(connectionString, clientOptions);
         await client.connect();
 
         const dbList = await client.db().admin().listDatabases();
