@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { MongoClient, ObjectId, type MongoClientOptions } from 'mongodb';
+import { MongoClient, ObjectId, type MongoClientOptions, type Db } from 'mongodb';
 import { type MongoDatabase, type MongoCollection } from '@/lib/types';
 
 function getSimpleSchema(doc: Record<string, any>): string {
@@ -41,6 +41,28 @@ function serializeDocs(docs: any[]): Record<string, any>[] {
     });
 }
 
+async function getCollectionsForDb(db: Db): Promise<MongoCollection[]> {
+    const collectionsList = await db.listCollections().toArray();
+    const collections: MongoCollection[] = [];
+
+    for (const colInfo of collectionsList) {
+        if (colInfo.name.startsWith('system.')) {
+            continue;
+        }
+        const collection = db.collection(colInfo.name);
+        const documents = await collection.find().limit(20).toArray();
+        const serializableDocs = serializeDocs(documents);
+        const schema = getSimpleSchema(documents[0]);
+
+        collections.push({
+            name: colInfo.name,
+            schema: schema,
+            documents: serializableDocs,
+        });
+    }
+    return collections;
+}
+
 
 export async function POST(request: Request) {
     const { connectionString } = await request.json();
@@ -61,38 +83,44 @@ export async function POST(request: Request) {
         client = new MongoClient(connectionString, clientOptions);
         await client.connect();
 
-        const dbList = await client.db().admin().listDatabases();
         const databases: MongoDatabase[] = [];
-        
-        const filteredDbs = dbList.databases.filter(db => !['admin', 'local', 'config'].includes(db.name));
 
-        for (const dbInfo of filteredDbs) {
-            const db = client.db(dbInfo.name);
-            const collectionsList = await db.listCollections().toArray();
-            
-            const collections: MongoCollection[] = [];
+        let dbNameFromUri: string | undefined;
+        try {
+            // Temporarily replace protocol to allow standard URL parsing
+            const parsedUrl = new URL(connectionString.replace('mongodb+srv', 'mongodb'));
+            const path = parsedUrl.pathname;
+            if (path && path.length > 1) { // Ensure path is not just "/"
+                dbNameFromUri = path.substring(1).split('/')[0];
+            }
+        } catch (e) {
+            console.warn('Could not parse database name from connection string', e);
+        }
 
-            for (const colInfo of collectionsList) {
-                if (colInfo.name.startsWith('system.')) {
-                    continue;
-                }
-                const collection = db.collection(colInfo.name);
-                const documents = await collection.find().limit(20).toArray();
-                const serializableDocs = serializeDocs(documents);
-                const schema = getSimpleSchema(documents[0]);
-
-                collections.push({
-                    name: colInfo.name,
-                    schema: schema,
-                    documents: serializableDocs,
+        if (dbNameFromUri) {
+            // If a database is specified in the URI, only fetch its collections
+            const db = client.db(dbNameFromUri);
+            const collections = await getCollectionsForDb(db);
+            if (collections.length > 0) {
+                databases.push({
+                    name: dbNameFromUri,
+                    collections,
                 });
             }
+        } else {
+            // Otherwise, list all databases the user has access to
+            const dbList = await client.db().admin().listDatabases();
+            const filteredDbs = dbList.databases.filter(db => !['admin', 'local', 'config'].includes(db.name));
 
-            if (collections.length > 0) {
-              databases.push({
-                  name: dbInfo.name,
-                  collections,
-              });
+            for (const dbInfo of filteredDbs) {
+                const db = client.db(dbInfo.name);
+                const collections = await getCollectionsForDb(db);
+                if (collections.length > 0) {
+                  databases.push({
+                      name: dbInfo.name,
+                      collections,
+                  });
+                }
             }
         }
 
