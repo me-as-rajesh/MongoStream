@@ -20,7 +20,7 @@ interface ConnectionBarProps {
 
 export function ConnectionBar({ isConnected, isLoading, onConnect, onDisconnect, onRefresh }: ConnectionBarProps) {
   const [connections, setConnections] = useLocalStorage<MongoConnection[]>('mongo-connections', []);
-  const [connectionString, setConnectionString] = useState('mongodb://localhost:27017/gyrus');
+  const [connectionString, setConnectionString] = useState('');
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
   const [saveName, setSaveName] = useState('');
@@ -85,7 +85,7 @@ export function ConnectionBar({ isConnected, isLoading, onConnect, onDisconnect,
                 </Select>
                 <Input
                     type="text"
-                    placeholder="mongodb://localhost:27017/gyrus"
+                    placeholder="mongodb://... or mongodb+srv://..."
                     value={connectionString}
                     onChange={(e) => setConnectionString(e.target.value)}
                     className="font-code"
