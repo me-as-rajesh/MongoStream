@@ -128,7 +128,18 @@ export async function POST(request: Request) {
 
     } catch (error) {
         console.error('MongoDB connection error:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Failed to connect to MongoDB';
+        let errorMessage = 'Failed to connect to MongoDB. Please check the connection string and your network access.';
+        if (error instanceof Error) {
+            if (error.message.includes('ECONNREFUSED')) {
+                errorMessage = 'Connection refused. Please ensure your MongoDB server is running and accessible at the specified address and port.';
+            } else if (error.message.includes('querySrv ENOTFOUND')) {
+                errorMessage = 'Could not find the database host. Please check your connection string and DNS settings. For Atlas connections, ensure you are not behind a firewall that blocks the necessary ports.';
+            } else if (error.message.includes('Authentication failed')) {
+                errorMessage = 'Authentication failed. Please check your username and password.';
+            } else {
+                errorMessage = error.message;
+            }
+        }
         return NextResponse.json({ error: errorMessage }, { status: 500 });
     } finally {
         if (client) {
