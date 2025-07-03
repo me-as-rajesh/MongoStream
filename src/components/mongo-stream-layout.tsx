@@ -32,7 +32,14 @@ export function MongoStreamLayout() {
 
       if (!response.ok) {
         const { error } = await response.json();
-        throw new Error(error || 'Failed to connect to the database.');
+        toast({
+            variant: 'destructive',
+            title: 'Connection Error',
+            description: error || 'Failed to connect to the database.',
+        });
+        setIsConnected(false);
+        setDatabases([]);
+        return;
       }
 
       const data: MongoDatabase[] = await response.json();
@@ -43,8 +50,8 @@ export function MongoStreamLayout() {
       console.error(error);
       toast({
         variant: 'destructive',
-        title: 'Connection Error',
-        description: error instanceof Error ? error.message : 'An unknown error occurred.',
+        title: 'Network Error',
+        description: 'Could not reach server. Check your network connection.',
       });
       setIsConnected(false);
       setDatabases([]);
